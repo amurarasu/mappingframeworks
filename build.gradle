@@ -1,0 +1,86 @@
+
+
+plugins {
+    id "net.ltgt.apt" version "0.8"
+    id "com.github.johnrengelman.shadow" version "2.0.4"
+}
+
+apply plugin: 'net.ltgt.apt'
+
+apply plugin: 'java'
+
+group = 'com.techradar'
+version = '0.0.1'
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+
+repositories {
+    jcenter()
+    mavenCentral()
+}
+
+sourceSets {
+    perf
+}
+
+dependencies {
+    compile 'ma.glasnost.orika:orika-core:1.5.2'
+    compile 'net.sf.dozer:dozer:5.5.1'
+    compile 'io.craftsman:dozer-jdk8-support:1.0.2'
+    compile 'org.mapstruct:mapstruct:1.3.0.Final'
+    compile 'org.mapstruct:mapstruct-jdk8:1.3.0.Final'
+    apt 'org.mapstruct:mapstruct-processor:1.3.0.Final'
+    compile 'org.modelmapper:modelmapper:1.1.0'
+    compile 'com.googlecode.jmapper-framework:jmapper-core:1.6.0.1'
+
+    compile 'org.slf4j:slf4j-api:1.7.21'
+    compile 'ch.qos.logback:logback-classic:1.1.7'
+    compile 'ch.qos.logback:logback-core:1.1.7'
+    compile 'org.slf4j:jcl-over-slf4j:1.7.21'
+
+    perfCompile project
+
+    perfCompile 'org.openjdk.jmh:jmh-core:0.9'
+    perfCompile 'org.openjdk.jmh:jmh-generator-annprocess:0.9'
+}
+
+apply plugin: "idea"
+idea {
+    module {
+        scopes.PROVIDED.plus  += [ configurations.perfCompile ]
+        scopes.PROVIDED.minus += [ configurations.compile ]
+    }
+}
+
+apply plugin: "eclipse"
+eclipse {
+    classpath {
+        plusConfigurations += [ configurations.perfCompile ]
+    }
+}
+
+task benchmarks(dependsOn: perfClasses) {
+
+    apply plugin: 'com.github.johnrengelman.shadow'
+
+    shadowJar {
+        classifier = "benchmarks"
+
+        from sourceSets.perf.output
+        from sourceSets.main.output
+        from project.configurations.perfRuntime
+
+        manifest {
+            attributes "Main-Class": "org.openjdk.jmh.Main"
+        }
+    }
+
+    doLast {
+        shadowJar.execute()
+    }
+
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '3.4'
+}
